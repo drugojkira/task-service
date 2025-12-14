@@ -1,0 +1,32 @@
+[tool.poetry]
+name = "task-service"
+version = "1.0.0"
+description = "Task Management Microservice"
+authors = ["Your Name"]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "^0.115.0"
+uvicorn = "^0.30.6"
+pydantic = "^2.9.2"
+pydantic-settings = "^2.5.2"
+sqlalchemy = "^2.0.35"
+asyncpg = "^0.29.0"
+alembic = "^1.13.3"
+dishka = "^1.3.0"
+faststream = {version = "^0.5.28", extras = ["rabbit"]}
+prometheus-client = "^0.21.0"
+greenlet = "^3.1.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 100
+target-version = ['py311']
+
+[tool.isort]
+profile = "black"
+line_length = 100
+

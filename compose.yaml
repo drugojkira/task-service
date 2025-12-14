@@ -1,0 +1,25 @@
+services:
+
+  task-service:
+    container_name: task-service
+    image: task-service:latest
+    platform: linux/amd64
+    volumes:
+      - ./src:/app/src
+      - ./alembic:/app/alembic
+    env_file:
+      - env/task-service.env
+      - env/postgres.env
+      - env/rabbitmq.env
+      - env/redis.env
+    networks:
+      - tasks
+    ports:
+      - "127.0.0.1:8000:8000"
+    build:
+      context: .
+    pull_policy: build
+
+networks:
+  tasks:
+    external: true
