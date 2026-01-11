@@ -117,3 +117,5 @@ class TestGetTasksUseCase:
         with pytest.raises(TaskNotFoundException):
             await use_case.get_by_id(task_id=999)
 
+
+

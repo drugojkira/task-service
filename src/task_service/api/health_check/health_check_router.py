@@ -20,3 +20,5 @@ async def readiness_check() -> HealthResponse:
     """Проверка готовности сервиса."""
     return HealthResponse(status="ready", service="task-service")
 
+
+

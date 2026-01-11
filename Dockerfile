@@ -21,3 +21,5 @@ RUN chmod +x /app/src/start.sh
 
 CMD ["/app/src/start.sh"]
 
+
+

@@ -7,6 +7,8 @@ services:
     volumes:
       - ./src:/app/src
       - ./alembic:/app/alembic
+      - ./tests:/app/tests
+      - ./pytest.ini:/app/pytest.ini
     env_file:
       - env/task-service.env
       - env/postgres.env

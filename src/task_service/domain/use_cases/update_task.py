@@ -58,6 +58,7 @@ class UpdateTaskUseCase:
             task_id=updated_task.id,
             event_type=event_type,
             task_title=updated_task.title,
+            task_description=updated_task.description,
             assignee=updated_task.assignee,
             status=updated_task.status,
             priority=updated_task.priority,

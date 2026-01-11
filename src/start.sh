@@ -8,3 +8,5 @@ alembic upgrade head
 echo "Starting Task Service..."
 python -m main
 
+
+

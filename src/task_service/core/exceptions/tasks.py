@@ -29,3 +29,5 @@ class TaskAlreadyExistsError(BaseServiceException):
         self.message = self._ERROR_MESSAGE_TEMPLATE.format(title=title)
         super().__init__(self.message)
 
+
+

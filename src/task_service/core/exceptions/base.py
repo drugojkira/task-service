@@ -18,3 +18,5 @@ class EntityNotFoundException(BaseServiceException):
         self.message = self._ERROR_MESSAGE_TEMPLATE.format(entity=entity, entity_id=entity_id)
         super().__init__(self.message)
 
+
+

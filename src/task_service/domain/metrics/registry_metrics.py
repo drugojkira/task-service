@@ -46,3 +46,5 @@ TASKS_BY_PRIORITY = Gauge(
 def setup_metrics(app: FastAPI) -> None:
     instrumentator.instrument(app)
 
+
+

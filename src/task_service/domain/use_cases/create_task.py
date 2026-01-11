@@ -22,7 +22,7 @@ class CreateTaskUseCase:
         repository: TaskRepository,
         publisher: RabbitMQPublisher,
         cache: RedisRepository,
-    ) -> None:
+    ):
         self._database = database
         self._repository = repository
         self._publisher = publisher
@@ -42,6 +42,7 @@ class CreateTaskUseCase:
             task_id=created_task.id,
             event_type=TaskEventType.CREATED,
             task_title=created_task.title,
+            task_description=created_task.description,
             assignee=created_task.assignee,
             status=created_task.status,
             priority=created_task.priority,

@@ -4,7 +4,6 @@ from sqlalchemy import DateTime, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from task_service.infrastructure.postgres.base import Base
-from task_service.schemas.task import TaskPriority, TaskStatus
 
 
 class Task(Base):
@@ -15,13 +14,13 @@ class Task(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(
         String(50),
-        default=TaskStatus.TODO.value,
-        server_default=TaskStatus.TODO.value,
+        default="todo",
+        server_default="todo",
     )
     priority: Mapped[str] = mapped_column(
         String(50),
-        default=TaskPriority.MEDIUM.value,
-        server_default=TaskPriority.MEDIUM.value,
+        default="medium",
+        server_default="medium",
     )
     assignee: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
     created_by: Mapped[str] = mapped_column(String(100), nullable=False)
