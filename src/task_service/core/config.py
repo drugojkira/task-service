@@ -36,6 +36,11 @@ class Settings(BaseSettings):
     REDIS_PASSWORD: str | None = None
     REDIS_CACHE_TTL: int = 300  # 5 минут
 
+    # Kafka
+    KAFKA_BOOTSTRAP_SERVERS: str = "kafka:9092"
+    KAFKA_TOPIC_TASK_EVENTS: str = "task.events"
+    KAFKA_ENABLED: bool = True
+
     @property
     def postgres_url(self) -> str:
         return (

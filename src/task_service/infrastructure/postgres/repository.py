@@ -50,6 +50,7 @@ class TaskRepository:
         count_query = select(func.count(self._tasks_collection.id.distinct())).where(and_(*query_filters))
         total = await session.scalar(count_query)
 
+        #list comprehension
         return [TaskSchema.model_validate(obj=obj) for obj in db_rows.all()], total or 0
 
     @log(logger)

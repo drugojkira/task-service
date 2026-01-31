@@ -15,6 +15,7 @@ from task_service.infrastructure.postgres.repository import TaskRepository
 from task_service.infrastructure.rabbitmq.broker import broker
 from task_service.infrastructure.rabbitmq.publisher import RabbitMQPublisher
 from task_service.infrastructure.redis.repository import RedisRepository
+from task_service.infrastructure.kafka.publisher import KafkaPublisher
 
 
 class InfrastructureProvider(Provider):
@@ -40,6 +41,17 @@ class InfrastructureProvider(Provider):
         )
         yield redis
         await redis.aclose()
+
+    @provide
+    async def get_kafka_publisher(self) -> AsyncIterator[KafkaPublisher]:
+        publisher = KafkaPublisher(
+            bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
+            topic=settings.KAFKA_TOPIC_TASK_EVENTS,
+            enabled=settings.KAFKA_ENABLED,
+        )
+        await publisher.start()
+        yield publisher
+        await publisher.stop()
 
 
 class RepositoryProvider(Provider):
@@ -72,8 +84,9 @@ class UseCaseProvider(Provider):
         repository: TaskRepository,
         publisher: RabbitMQPublisher,
         cache: RedisRepository,
+        kafka_publisher: KafkaPublisher,
     ) -> CreateTaskUseCase:
-        return CreateTaskUseCase(database, repository, publisher, cache)
+        return CreateTaskUseCase(database, repository, publisher, cache, kafka_publisher)
 
     @provide
     def get_get_tasks(
@@ -91,8 +104,9 @@ class UseCaseProvider(Provider):
         repository: TaskRepository,
         publisher: RabbitMQPublisher,
         cache: RedisRepository,
+        kafka_publisher: KafkaPublisher,
     ) -> UpdateTaskUseCase:
-        return UpdateTaskUseCase(database, repository, publisher, cache)
+        return UpdateTaskUseCase(database, repository, publisher, cache, kafka_publisher)
 
     @provide
     def get_delete_task(
@@ -100,8 +114,9 @@ class UseCaseProvider(Provider):
         database: Database,
         repository: TaskRepository,
         cache: RedisRepository,
+        kafka_publisher: KafkaPublisher,
     ) -> DeleteTaskUseCase:
-        return DeleteTaskUseCase(database, repository, cache)
+        return DeleteTaskUseCase(database, repository, cache, kafka_publisher)
 
 
 class MetricsProvider(Provider):

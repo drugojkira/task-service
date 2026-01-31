@@ -14,6 +14,7 @@ services:
       - env/postgres.env
       - env/rabbitmq.env
       - env/redis.env
+      - env/kafka.env
     networks:
       - tasks
     ports:

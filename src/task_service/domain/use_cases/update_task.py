@@ -3,6 +3,7 @@ from task_service.infrastructure.postgres.database import Database
 from task_service.infrastructure.postgres.repository import TaskRepository
 from task_service.infrastructure.rabbitmq.publisher import RabbitMQPublisher
 from task_service.infrastructure.redis.repository import RedisRepository
+from task_service.infrastructure.kafka.publisher import KafkaPublisher
 from task_service.schemas.task import (
     TaskEventType,
     TaskNotificationMessage,
@@ -22,11 +23,13 @@ class UpdateTaskUseCase:
         repository: TaskRepository,
         publisher: RabbitMQPublisher,
         cache: RedisRepository,
+        kafka_publisher: KafkaPublisher,
     ) -> None:
         self._database = database
         self._repository = repository
         self._publisher = publisher
         self._cache = cache
+        self._kafka_publisher = kafka_publisher
 
     @log(logger)
     async def execute(
@@ -53,7 +56,7 @@ class UpdateTaskUseCase:
         elif task.assignee and old_task.assignee != task.assignee:
             event_type = TaskEventType.ASSIGNED
 
-        # Отправляем уведомление
+        # Отправляем уведомление в RabbitMQ (для нотификаций)
         notification = TaskNotificationMessage(
             task_id=updated_task.id,
             event_type=event_type,
@@ -65,6 +68,9 @@ class UpdateTaskUseCase:
             created_by=updated_by,
         )
         await self._publisher.publish_task_notification(notification)
+
+        # Отправляем событие в Kafka (для аналитики)
+        await self._kafka_publisher.publish_task_event(updated_task, event_type)
 
         logger.info(f"Task updated: id={updated_task.id}, event={event_type}")
         return updated_task
