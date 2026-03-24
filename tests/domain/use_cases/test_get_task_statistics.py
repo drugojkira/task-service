@@ -83,7 +83,7 @@ class TestGetTaskStatisticsUseCase:
         mock_cache.get_task_statistics = AsyncMock(return_value=None)
 
         # Настраиваем мок репозитория возвращать статистику
-        mock_repository.get_tasks_count = AsyncMock(return_value=10)
+        mock_repository.get_total_tasks_count = AsyncMock(return_value=10)
         mock_repository.get_tasks_count_by_status = AsyncMock(
             return_value={"todo": 5, "in_progress": 3, "done": 2}
         )
@@ -122,7 +122,7 @@ class TestGetTaskStatisticsUseCase:
         """Проверка корректности расчёта статистики."""
         mock_cache.get_task_statistics = AsyncMock(return_value=None)
 
-        mock_repository.get_tasks_count = AsyncMock(return_value=50)
+        mock_repository.get_total_tasks_count = AsyncMock(return_value=50)
         mock_repository.get_tasks_count_by_status = AsyncMock(
             return_value={"todo": 20, "in_progress": 15, "done": 10, "cancelled": 5}
         )
@@ -155,7 +155,7 @@ class TestGetTaskStatisticsUseCase:
         """Проверка что используется TTL 1 минута (60 секунд)."""
         mock_cache.get_task_statistics = AsyncMock(return_value=None)
 
-        mock_repository.get_tasks_count = AsyncMock(return_value=10)
+        mock_repository.get_total_tasks_count = AsyncMock(return_value=10)
         mock_repository.get_tasks_count_by_status = AsyncMock(return_value={})
         mock_repository.get_tasks_count_by_priority = AsyncMock(return_value={})
         mock_repository.get_tasks_count_by_assignee = AsyncMock(return_value={})

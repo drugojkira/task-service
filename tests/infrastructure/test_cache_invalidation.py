@@ -168,7 +168,6 @@ class TestCacheInvalidation:
         use_case = DeleteTaskUseCase(
             database=mock_database,
             repository=mock_repository,
-            publisher=mock_publisher,
             cache=mock_cache,
             kafka_publisher=mock_kafka_publisher,
         )
@@ -182,7 +181,6 @@ class TestCacheInvalidation:
         # Настраиваем мокированный репозиторий
         mock_repository.get_one_task = AsyncMock(return_value=test_task_schema)
         mock_repository.delete_task = AsyncMock()
-        mock_publisher.publish_task_notification = AsyncMock()
         mock_kafka_publisher.publish_task_event = AsyncMock()
         mock_cache.delete_task = AsyncMock()
         mock_cache.delete_task_statistics = AsyncMock()

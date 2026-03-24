@@ -48,6 +48,24 @@ async def get_all_tasks(
 
 
 @tasks_router.get(
+    "/statistics",
+    response_model=dict,
+)
+@inject
+@log(logger)
+async def get_task_statistics(
+    use_case: FromDishka[GetTaskStatisticsUseCase],
+) -> dict:
+    """Получить статистику по задачам."""
+    try:
+        statistics = await use_case.execute()
+        return statistics.model_dump()
+    except Exception as e:
+        logger.error(f"Error getting task statistics: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+@tasks_router.get(
     "/{task_id}",
     response_model=TaskResponse,
 )
@@ -128,21 +146,3 @@ async def delete_task(
         await use_case.execute(task_id=task_id)
     except TaskNotFoundException as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-
-
-@tasks_router.get(
-    "/statistics",
-    response_model=dict,
-)
-@inject
-@log(logger)
-async def get_task_statistics(
-    use_case: FromDishka[GetTaskStatisticsUseCase],
-) -> dict:
-    """Получить статистику по задачам."""
-    try:
-        statistics = await use_case.execute()
-        return statistics.model_dump()
-    except Exception as e:
-        logger.error(f"Error getting task statistics: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))

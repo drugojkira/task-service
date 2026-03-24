@@ -31,7 +31,7 @@ class GetTaskStatisticsUseCase:
 
         # Получаем из БД
         async with self._database.session() as session:
-            total_tasks = await self._repository.get_tasks_count(session)
+            total_tasks = await self._repository.get_total_tasks_count(session)
             by_status = await self._repository.get_tasks_count_by_status(session)
             by_priority = await self._repository.get_tasks_count_by_priority(session)
             by_assignee = await self._repository.get_tasks_count_by_assignee(session)
