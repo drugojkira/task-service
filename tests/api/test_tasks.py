@@ -3,11 +3,13 @@ from dishka import Provider, Scope
 from fastapi import FastAPI
 from httpx import AsyncClient
 from starlette import status
+from unittest.mock import AsyncMock
 
 from task_service.core.exceptions.tasks import TaskNotFoundException
 from task_service.domain.use_cases.create_task import CreateTaskUseCase
 from task_service.domain.use_cases.get_tasks import GetTasksUseCase
-from task_service.schemas.task import TaskSchema
+from task_service.domain.use_cases.get_task_statistics import GetTaskStatisticsUseCase
+from task_service.schemas.task import TaskSchema, TaskStatistics
 from tests.conftest import override
 from tests.mocks import MockedUseCase
 
@@ -129,6 +131,66 @@ class TestTasksAPI:
         )
 
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+    # === GET /api/v1/tasks/statistics ===
+
+    async def test_get_task_statistics_success(
+        self,
+        app: FastAPI,
+        test_client: AsyncClient,
+    ) -> None:
+        """Успешное получение статистики задач."""
+        expected_stats = TaskStatistics(
+            total_tasks=10,
+            by_status={"todo": 5, "in_progress": 3, "done": 2},
+            by_priority={"low": 2, "medium": 5, "high": 3},
+            by_assignee={"user1": 4, "user2": 6},
+        )
+
+        mocked_use_case = MockedUseCase(to_return=expected_stats)
+        mocked_use_case.execute = AsyncMock(return_value=expected_stats)
+
+        mock_provider = Provider(scope=Scope.REQUEST)
+        mock_provider.provide(lambda: mocked_use_case, provides=GetTaskStatisticsUseCase)
+
+        async with override(app.state.dishka_container, mock_provider):
+            response = await test_client.get("/api/v1/tasks/statistics")
+
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        assert data["total_tasks"] == 10
+        assert data["by_status"] == {"todo": 5, "in_progress": 3, "done": 2}
+        assert data["by_priority"] == {"low": 2, "medium": 5, "high": 3}
+        assert data["by_assignee"] == {"user1": 4, "user2": 6}
+
+    async def test_get_task_statistics_empty(
+        self,
+        app: FastAPI,
+        test_client: AsyncClient,
+    ) -> None:
+        """Получение статистики когда нет задач."""
+        expected_stats = TaskStatistics(
+            total_tasks=0,
+            by_status={},
+            by_priority={},
+            by_assignee={},
+        )
+
+        mocked_use_case = MockedUseCase(to_return=expected_stats)
+        mocked_use_case.execute = AsyncMock(return_value=expected_stats)
+
+        mock_provider = Provider(scope=Scope.REQUEST)
+        mock_provider.provide(lambda: mocked_use_case, provides=GetTaskStatisticsUseCase)
+
+        async with override(app.state.dishka_container, mock_provider):
+            response = await test_client.get("/api/v1/tasks/statistics")
+
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        assert data["total_tasks"] == 0
+        assert data["by_status"] == {}
+        assert data["by_priority"] == {}
+        assert data["by_assignee"] == {}
 
 
 
