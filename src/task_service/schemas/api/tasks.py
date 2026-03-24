@@ -11,7 +11,11 @@ from task_service.schemas.task import TaskPriority, TaskStatus
 class TasksRequest(PaginationAwareRequest):
     """Запрос списка задач с фильтрацией."""
 
-    search: Optional[str] = None
+    search: Optional[str] = Field(
+        None,
+        description="Часть названия для поиска (регистронезависимо)",
+        example="bug",
+    )
     status: Optional[TaskStatus] = None
     priority: Optional[TaskPriority] = None
     assignee: Optional[str] = None

@@ -7,11 +7,14 @@ from redis.asyncio import Redis
 from task_service.core.config import settings
 from task_service.domain.metrics.use_case import GetTasksMetricsUseCase
 from task_service.domain.use_cases.create_task import CreateTaskUseCase
+from task_service.domain.use_cases.create_comment import CreateCommentUseCase
 from task_service.domain.use_cases.delete_task import DeleteTaskUseCase
 from task_service.domain.use_cases.get_tasks import GetTasksUseCase
+from task_service.domain.use_cases.get_task_comments import GetTaskCommentsUseCase
 from task_service.domain.use_cases.update_task import UpdateTaskUseCase
 from task_service.infrastructure.postgres.database import Database
 from task_service.infrastructure.postgres.repository import TaskRepository
+from task_service.infrastructure.postgres.comment_repository import CommentRepository
 from task_service.infrastructure.rabbitmq.broker import broker
 from task_service.infrastructure.rabbitmq.publisher import RabbitMQPublisher
 from task_service.infrastructure.redis.repository import RedisRepository
@@ -64,6 +67,10 @@ class RepositoryProvider(Provider):
     @provide
     def get_redis_repository(self) -> RedisRepository:
         return RedisRepository()
+    
+    @provide
+    def get_comment_repository(self) -> CommentRepository:
+        return CommentRepository()
 
 
 class ServiceProvider(Provider):
@@ -117,6 +124,14 @@ class UseCaseProvider(Provider):
         kafka_publisher: KafkaPublisher,
     ) -> DeleteTaskUseCase:
         return DeleteTaskUseCase(database, repository, cache, kafka_publisher)
+
+    @provide
+    def get_create_comment(self, database: Database, repository: CommentRepository) -> CreateCommentUseCase:
+        return CreateCommentUseCase(database, repository)
+
+    @provide
+    def get_get_task_comments(self, database: Database, repository: CommentRepository) -> GetTaskCommentsUseCase:
+        return GetTaskCommentsUseCase(database, repository)
 
 
 class MetricsProvider(Provider):

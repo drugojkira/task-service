@@ -34,6 +34,9 @@ class DeleteTaskUseCase:
         # Удаляем из кэша
         await self._cache.delete_task(task_id)
 
+        # Инвалидируем кэш статистики
+        await self._cache.delete_task_statistics()
+
         # Отправляем событие в Kafka (для аналитики)
         await self._kafka_publisher.publish_task_event(task, TaskEventType.DELETED)
 

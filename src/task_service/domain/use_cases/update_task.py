@@ -49,6 +49,9 @@ class UpdateTaskUseCase:
         await self._cache.delete_task(task_id)
         await self._cache.set_task(updated_task)
 
+        # Инвалидируем кэш статистики
+        await self._cache.delete_task_statistics()
+
         # Определяем тип события
         event_type = TaskEventType.UPDATED
         if task.status and old_task.status != task.status:

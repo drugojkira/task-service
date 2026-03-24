@@ -98,3 +98,12 @@ class TaskNotificationMessage(BaseModel):
     status: TaskStatus
     priority: TaskPriority
     created_by: str
+
+
+class TaskStatistics(BaseModel):
+    """Статистика по задачам."""
+
+    total_tasks: int
+    by_status: dict[str, int]  # {"pending": 5, "in_progress": 3, ...}
+    by_priority: dict[str, int]
+    by_assignee: dict[str, int]

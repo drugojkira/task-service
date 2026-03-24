@@ -3,6 +3,8 @@ from task_service.infrastructure.postgres.database import Database
 from task_service.infrastructure.postgres.repository import TaskRepository
 from task_service.infrastructure.rabbitmq.publisher import RabbitMQPublisher
 from task_service.infrastructure.redis.repository import RedisRepository
+from typing import Optional
+
 from task_service.infrastructure.kafka.publisher import KafkaPublisher
 from task_service.schemas.task import (
     CreateTask,
@@ -23,7 +25,7 @@ class CreateTaskUseCase:
         repository: TaskRepository,
         publisher: RabbitMQPublisher,
         cache: RedisRepository,
-        kafka_publisher: KafkaPublisher,
+        kafka_publisher: Optional[KafkaPublisher] = None,
     ):
         self._database = database
         self._repository = repository
@@ -40,6 +42,9 @@ class CreateTaskUseCase:
         # Сохраняем в кэш
         await self._cache.set_task(created_task)
 
+        # Инвалидируем кэш статистики
+        await self._cache.delete_task_statistics()
+
         # Отправляем уведомление в RabbitMQ (для нотификаций)
         notification = TaskNotificationMessage(
             task_id=created_task.id,
@@ -53,8 +58,9 @@ class CreateTaskUseCase:
         )
         await self._publisher.publish_task_notification(notification)
 
-        # Отправляем событие в Kafka (для аналитики)
-        await self._kafka_publisher.publish_task_event(created_task, TaskEventType.CREATED)
+        # Отправляем событие в Kafka (для аналитики) если настроено
+        if self._kafka_publisher is not None:
+            await self._kafka_publisher.publish_task_event(created_task, TaskEventType.CREATED)
 
         logger.info(f"Task created: id={created_task.id}, title={created_task.title}")
         return created_task

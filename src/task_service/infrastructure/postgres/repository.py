@@ -112,12 +112,8 @@ class TaskRepository:
 
         if filters.search:
             search_pattern = f"%{filters.search}%"
-            filters_list.append(
-                or_(
-                    self._tasks_collection.title.ilike(search_pattern),
-                    self._tasks_collection.description.ilike(search_pattern),
-                )
-            )
+            # Search only in title (case-insensitive) for substring match
+            filters_list.append(self._tasks_collection.title.ilike(search_pattern))
 
         if filters.status:
             filters_list.append(self._tasks_collection.status == filters.status)
@@ -159,6 +155,16 @@ class TaskRepository:
         query = (
             select(self._tasks_collection.priority, func.count(self._tasks_collection.id))
             .group_by(self._tasks_collection.priority)
+        )
+        result = await session.execute(query)
+        return {row[0]: row[1] for row in result.fetchall()}
+
+    @log(logger)
+    async def get_tasks_count_by_assignee(self, session: AsyncSession) -> dict[str, int]:
+        query = (
+            select(self._tasks_collection.assignee, func.count(self._tasks_collection.id))
+            .where(self._tasks_collection.assignee.isnot(None))
+            .group_by(self._tasks_collection.assignee)
         )
         result = await session.execute(query)
         return {row[0]: row[1] for row in result.fetchall()}

@@ -34,3 +34,19 @@ class Task(Base):
         onupdate=func.timezone("UTC", func.current_timestamp()),
     )
     due_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=False), nullable=True)
+
+
+class Comment(Base):
+    __tablename__ = "comments"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    task_id: Mapped[int] = mapped_column(index=True)
+    user_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=False), server_default=func.timezone("UTC", func.current_timestamp())
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=False), server_default=func.timezone("UTC", func.current_timestamp()), onupdate=func.timezone("UTC", func.current_timestamp())
+    )
+
