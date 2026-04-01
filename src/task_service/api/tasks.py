@@ -1,6 +1,7 @@
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from starlette import status
 
 from task_service.api.depends import get_current_user
@@ -8,6 +9,7 @@ from task_service.core.exceptions.tasks import TaskNotFoundException
 from task_service.core.logger import get_logger, log
 from task_service.domain.use_cases.create_task import CreateTaskUseCase
 from task_service.domain.use_cases.delete_task import DeleteTaskUseCase
+from task_service.domain.use_cases.export_tasks_to_csv import ExportTasksToCSVUseCase
 from task_service.domain.use_cases.get_tasks import GetTasksUseCase
 from task_service.domain.use_cases.get_task_statistics import GetTaskStatisticsUseCase
 from task_service.domain.use_cases.update_task import UpdateTaskUseCase
@@ -45,6 +47,27 @@ async def get_all_tasks(
     except Exception as e:
         logger.error(f"Error getting tasks: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+@tasks_router.get("/export")
+@inject
+@log(logger)
+async def export_tasks(
+    export_use_case: FromDishka[ExportTasksToCSVUseCase],
+    request: TasksRequest = Depends(),
+    format: str = "csv",
+) -> StreamingResponse:
+    """Экспортировать задачи в CSV (скачивание файла)."""
+    if format.lower() != "csv":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported format")
+
+    data = await export_use_case.execute(filters=TaskFilters.model_validate(request.model_dump()))
+
+    return StreamingResponse(
+        content=iter([data]),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="tasks_export.csv"'},
+    )
 
 
 @tasks_router.get(

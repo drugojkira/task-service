@@ -10,6 +10,7 @@ from task_service.domain.use_cases.create_task import CreateTaskUseCase
 from task_service.domain.use_cases.create_comment import CreateCommentUseCase
 from task_service.domain.use_cases.delete_task import DeleteTaskUseCase
 from task_service.domain.use_cases.auto_escalate_tasks import AutoEscalateTasksUseCase
+from task_service.domain.use_cases.export_tasks_to_csv import ExportTasksToCSVUseCase
 from task_service.domain.use_cases.get_tasks import GetTasksUseCase
 from task_service.domain.use_cases.get_task_statistics import GetTaskStatisticsUseCase
 from task_service.domain.use_cases.get_task_comments import GetTaskCommentsUseCase
@@ -154,6 +155,10 @@ class UseCaseProvider(Provider):
         kafka_publisher: KafkaPublisher,
     ) -> AutoEscalateTasksUseCase:
         return AutoEscalateTasksUseCase(database, repository, publisher, cache, kafka_publisher)
+
+    @provide
+    def get_export_tasks_to_csv(self, database: Database, repository: TaskRepository) -> ExportTasksToCSVUseCase:
+        return ExportTasksToCSVUseCase(database, repository)
 
 
 class MetricsProvider(Provider):
