@@ -19,7 +19,7 @@ EXPOSE 8000
 # Делаем start.sh исполняемым
 RUN chmod +x /app/src/start.sh
 
-CMD ["/app/src/start.sh"]
+CMD ["/bin/sh", "-lc", "tr -d '\\r' < /app/src/start.sh | /bin/sh"]
 
 
 

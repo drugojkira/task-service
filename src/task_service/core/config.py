@@ -36,6 +36,10 @@ class Settings(BaseSettings):
     REDIS_PASSWORD: str | None = None
     REDIS_CACHE_TTL: int = 300  # 5 минут
 
+    # ARQ (cron jobs)
+    ARQ_REDIS_DB: int = 2  # отдельная БД Redis для task-service worker
+    AUTO_ESCALATE_TODO_AFTER_DAYS: int = 3
+
     # Kafka
     KAFKA_BOOTSTRAP_SERVERS: str = "kafka:9092"
     KAFKA_TOPIC_TASK_EVENTS: str = "task.events"

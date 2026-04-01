@@ -1,13 +1,14 @@
 from datetime import datetime
+from datetime import timedelta
 from typing import Type
 
-from sqlalchemy import and_, delete, func, insert, or_, select, update
+from sqlalchemy import and_, delete, func, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from task_service.core.exceptions.tasks import TaskNotFoundException
 from task_service.core.logger import get_logger, log
 from task_service.infrastructure.postgres.models import Task
-from task_service.schemas.task import CreateTask, TaskFilters, TaskSchema, UpdateTask
+from task_service.schemas.task import CreateTask, TaskFilters, TaskSchema, TaskStatus, UpdateTask
 
 logger = get_logger(__name__)
 
@@ -105,6 +106,37 @@ class TaskRepository:
             raise TaskNotFoundException(task_id)
 
         await session.flush()
+
+    @log(logger)
+    async def get_tasks_for_auto_escalation(
+        self,
+        session: AsyncSession,
+        *,
+        older_than_days: int,
+        limit: int = 500,
+    ) -> list[TaskSchema]:
+        """
+        Получить задачи, которые слишком долго находятся в TODO.
+
+        Так как отдельного "updated_at статуса" нет, используем `created_at`:
+        если задача всё ещё TODO и создана давно — она "залежалась" и может быть повышена.
+        """
+        threshold = datetime.utcnow() - timedelta(days=older_than_days)
+
+        query = (
+            select(self._tasks_collection)
+            .where(
+                and_(
+                    self._tasks_collection.status == TaskStatus.TODO,
+                    self._tasks_collection.created_at <= threshold,
+                )
+            )
+            .order_by(self._tasks_collection.created_at.asc())
+            .limit(limit)
+        )
+
+        db_rows = await session.scalars(query)
+        return [TaskSchema.model_validate(obj=obj) for obj in db_rows.all()]
 
     def _build_filters(self, filters: TaskFilters) -> list:
         """Построить фильтры для запроса."""

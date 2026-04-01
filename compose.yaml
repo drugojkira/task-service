@@ -23,6 +23,26 @@ services:
       context: .
     pull_policy: build
 
+  task-worker:
+    container_name: task-worker
+    image: task-service:latest
+    platform: linux/amd64
+    volumes:
+      - ./src:/app/src
+      - ./alembic:/app/alembic
+    env_file:
+      - env/task-service.env
+      - env/postgres.env
+      - env/rabbitmq.env
+      - env/redis.env
+      - env/kafka.env
+    networks:
+      - tasks
+    build:
+      context: .
+    pull_policy: build
+    command: ["arq", "arq_worker.WorkerSettings"]
+
 networks:
   tasks:
     external: true
