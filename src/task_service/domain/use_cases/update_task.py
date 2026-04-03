@@ -1,6 +1,9 @@
+from typing import Optional
+
 from task_service.core.logger import get_logger, log
 from task_service.infrastructure.postgres.database import Database
 from task_service.infrastructure.postgres.repository import TaskRepository
+from task_service.infrastructure.postgres.task_history_repository import TaskHistoryRepository
 from task_service.infrastructure.rabbitmq.publisher import RabbitMQPublisher
 from task_service.infrastructure.redis.repository import RedisRepository
 from task_service.infrastructure.kafka.publisher import KafkaPublisher
@@ -24,12 +27,14 @@ class UpdateTaskUseCase:
         publisher: RabbitMQPublisher,
         cache: RedisRepository,
         kafka_publisher: KafkaPublisher,
+        history_repository: Optional[TaskHistoryRepository] = None,
     ) -> None:
         self._database = database
         self._repository = repository
         self._publisher = publisher
         self._cache = cache
         self._kafka_publisher = kafka_publisher
+        self._history_repository = history_repository
 
     @log(logger)
     async def execute(
@@ -44,6 +49,18 @@ class UpdateTaskUseCase:
             old_task = await self._repository.get_one_task(session, task_id)
 
             updated_task = await self._repository.update_task(session, task_id, task)
+
+            # Логируем изменение в историю (diff)
+            if self._history_repository:
+                changes = self._build_diff(old_task, updated_task)
+                if changes:
+                    await self._history_repository.save(
+                        session=session,
+                        task_id=task_id,
+                        changed_by=updated_by,
+                        change_type="updated",
+                        changes=changes,
+                    )
 
         # Обновляем кэш
         await self._cache.delete_task(task_id)
@@ -77,3 +94,18 @@ class UpdateTaskUseCase:
 
         logger.info(f"Task updated: id={updated_task.id}, event={event_type}")
         return updated_task
+
+    @staticmethod
+    def _build_diff(old_task: TaskSchema, new_task: TaskSchema) -> dict:
+        """Построить diff между старой и новой задачей."""
+        diff = {}
+        fields_to_compare = ["title", "description", "status", "priority", "assignee", "due_date"]
+        for field in fields_to_compare:
+            old_val = getattr(old_task, field)
+            new_val = getattr(new_task, field)
+            if old_val != new_val:
+                # Приводим enum к строке для JSON-сериализации
+                old_serialized = old_val.value if hasattr(old_val, 'value') else str(old_val) if old_val is not None else None
+                new_serialized = new_val.value if hasattr(new_val, 'value') else str(new_val) if new_val is not None else None
+                diff[field] = {"old": old_serialized, "new": new_serialized}
+        return diff

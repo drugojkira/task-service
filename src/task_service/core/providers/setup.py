@@ -12,12 +12,14 @@ from task_service.domain.use_cases.delete_task import DeleteTaskUseCase
 from task_service.domain.use_cases.auto_escalate_tasks import AutoEscalateTasksUseCase
 from task_service.domain.use_cases.export_tasks_to_csv import ExportTasksToCSVUseCase
 from task_service.domain.use_cases.get_tasks import GetTasksUseCase
+from task_service.domain.use_cases.get_task_history import GetTaskHistoryUseCase
 from task_service.domain.use_cases.get_task_statistics import GetTaskStatisticsUseCase
 from task_service.domain.use_cases.get_task_comments import GetTaskCommentsUseCase
 from task_service.domain.use_cases.update_task import UpdateTaskUseCase
 from task_service.infrastructure.postgres.database import Database
 from task_service.infrastructure.postgres.repository import TaskRepository
 from task_service.infrastructure.postgres.comment_repository import CommentRepository
+from task_service.infrastructure.postgres.task_history_repository import TaskHistoryRepository
 from task_service.infrastructure.rabbitmq.broker import broker
 from task_service.infrastructure.rabbitmq.publisher import RabbitMQPublisher
 from task_service.infrastructure.redis.repository import RedisRepository
@@ -75,6 +77,10 @@ class RepositoryProvider(Provider):
     def get_comment_repository(self) -> CommentRepository:
         return CommentRepository()
 
+    @provide
+    def get_task_history_repository(self) -> TaskHistoryRepository:
+        return TaskHistoryRepository()
+
 
 class ServiceProvider(Provider):
     scope = Scope.REQUEST
@@ -95,8 +101,9 @@ class UseCaseProvider(Provider):
         publisher: RabbitMQPublisher,
         cache: RedisRepository,
         kafka_publisher: KafkaPublisher,
+        history_repository: TaskHistoryRepository,
     ) -> CreateTaskUseCase:
-        return CreateTaskUseCase(database, repository, publisher, cache, kafka_publisher)
+        return CreateTaskUseCase(database, repository, publisher, cache, kafka_publisher, history_repository)
 
     @provide
     def get_get_tasks(
@@ -124,8 +131,9 @@ class UseCaseProvider(Provider):
         publisher: RabbitMQPublisher,
         cache: RedisRepository,
         kafka_publisher: KafkaPublisher,
+        history_repository: TaskHistoryRepository,
     ) -> UpdateTaskUseCase:
-        return UpdateTaskUseCase(database, repository, publisher, cache, kafka_publisher)
+        return UpdateTaskUseCase(database, repository, publisher, cache, kafka_publisher, history_repository)
 
     @provide
     def get_delete_task(
@@ -134,8 +142,17 @@ class UseCaseProvider(Provider):
         repository: TaskRepository,
         cache: RedisRepository,
         kafka_publisher: KafkaPublisher,
+        history_repository: TaskHistoryRepository,
     ) -> DeleteTaskUseCase:
-        return DeleteTaskUseCase(database, repository, cache, kafka_publisher)
+        return DeleteTaskUseCase(database, repository, cache, kafka_publisher, history_repository)
+
+    @provide
+    def get_get_task_history(
+        self,
+        database: Database,
+        history_repository: TaskHistoryRepository,
+    ) -> GetTaskHistoryUseCase:
+        return GetTaskHistoryUseCase(database, history_repository)
 
     @provide
     def get_create_comment(self, database: Database, repository: CommentRepository) -> CreateCommentUseCase:

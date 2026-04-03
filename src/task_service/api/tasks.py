@@ -1,6 +1,9 @@
+from datetime import datetime
+from typing import Optional
+
 from dishka import FromDishka
 from dishka.integrations.fastapi import inject
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from starlette import status
 
@@ -11,6 +14,7 @@ from task_service.domain.use_cases.create_task import CreateTaskUseCase
 from task_service.domain.use_cases.delete_task import DeleteTaskUseCase
 from task_service.domain.use_cases.export_tasks_to_csv import ExportTasksToCSVUseCase
 from task_service.domain.use_cases.get_tasks import GetTasksUseCase
+from task_service.domain.use_cases.get_task_history import GetTaskHistoryUseCase
 from task_service.domain.use_cases.get_task_statistics import GetTaskStatisticsUseCase
 from task_service.domain.use_cases.update_task import UpdateTaskUseCase
 from task_service.schemas.api.pagination import Pagination
@@ -22,6 +26,7 @@ from task_service.schemas.api.tasks import (
 )
 from task_service.schemas.auth import AccessTokenData
 from task_service.schemas.task import CreateTask, TaskFilters, UpdateTask
+from task_service.schemas.task_history import TaskHistoryFilters, TaskHistorySchema
 
 logger = get_logger(__name__)
 
@@ -85,6 +90,32 @@ async def get_task_statistics(
         return statistics.model_dump()
     except Exception as e:
         logger.error(f"Error getting task statistics: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+@tasks_router.get(
+    "/{task_id}/history",
+    response_model=list[TaskHistorySchema],
+)
+@inject
+@log(logger)
+async def get_task_history(
+    task_id: int,
+    use_case: FromDishka[GetTaskHistoryUseCase],
+    change_type: Optional[str] = Query(None, description="Фильтр по типу изменения: created, updated, deleted"),
+    changed_at_gte: Optional[datetime] = Query(None, description="Изменения после этой даты"),
+    changed_at_lte: Optional[datetime] = Query(None, description="Изменения до этой даты"),
+) -> list[TaskHistorySchema]:
+    """Получить историю изменений задачи."""
+    try:
+        filters = TaskHistoryFilters(
+            change_type=change_type,
+            changed_at_gte=changed_at_gte,
+            changed_at_lte=changed_at_lte,
+        )
+        return await use_case.execute(task_id=task_id, filters=filters)
+    except Exception as e:
+        logger.error(f"Error getting task history: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 

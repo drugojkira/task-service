@@ -1,6 +1,7 @@
 from task_service.core.logger import get_logger, log
 from task_service.infrastructure.postgres.database import Database
 from task_service.infrastructure.postgres.repository import TaskRepository
+from task_service.infrastructure.postgres.task_history_repository import TaskHistoryRepository
 from task_service.infrastructure.rabbitmq.publisher import RabbitMQPublisher
 from task_service.infrastructure.redis.repository import RedisRepository
 from typing import Optional
@@ -26,18 +27,30 @@ class CreateTaskUseCase:
         publisher: RabbitMQPublisher,
         cache: RedisRepository,
         kafka_publisher: Optional[KafkaPublisher] = None,
+        history_repository: Optional[TaskHistoryRepository] = None,
     ):
         self._database = database
         self._repository = repository
         self._publisher = publisher
         self._cache = cache
         self._kafka_publisher = kafka_publisher
+        self._history_repository = history_repository
 
     @log(logger)
     async def execute(self, task: CreateTask) -> TaskSchema:
         """Создать задачу и отправить уведомление."""
         async with self._database.session() as session:
             created_task = await self._repository.create_task(session, task)
+
+            # Логируем создание в историю
+            if self._history_repository:
+                await self._history_repository.save(
+                    session=session,
+                    task_id=created_task.id,
+                    changed_by=task.created_by,
+                    change_type="created",
+                    changes=created_task.model_dump(mode="json"),
+                )
 
         # Сохраняем в кэш
         await self._cache.set_task(created_task)

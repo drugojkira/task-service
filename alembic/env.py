@@ -8,7 +8,7 @@ from tenacity import before_sleep_log, retry, wait_exponential
 
 from task_service.core.config import settings
 from task_service.infrastructure.postgres.base import Base
-from task_service.infrastructure.postgres.models import Task  # noqa: F401
+from task_service.infrastructure.postgres.models import Task, TaskHistory  # noqa: F401
 
 CREATE_SCHEMA_QUERY = f"CREATE SCHEMA IF NOT EXISTS {settings.POSTGRES_SCHEMA};"
 

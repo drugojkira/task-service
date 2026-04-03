@@ -1,6 +1,7 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, String, Text, func
+from sqlalchemy import DateTime, ForeignKey, String, Text, func
+from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import Mapped, mapped_column
 
 from task_service.infrastructure.postgres.base import Base
@@ -50,3 +51,16 @@ class Comment(Base):
         DateTime(timezone=False), server_default=func.timezone("UTC", func.current_timestamp()), onupdate=func.timezone("UTC", func.current_timestamp())
     )
 
+
+class TaskHistory(Base):
+    __tablename__ = "task_history"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    task_id: Mapped[int] = mapped_column(index=True)
+    changed_by: Mapped[str] = mapped_column(String(255), nullable=False)
+    change_type: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    changes: Mapped[dict] = mapped_column(JSON, nullable=False)
+    changed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=False),
+        server_default=func.timezone("UTC", func.current_timestamp()),
+    )
