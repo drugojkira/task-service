@@ -36,6 +36,10 @@ class Settings(BaseSettings):
     REDIS_PASSWORD: str | None = None
     REDIS_CACHE_TTL: int = 300  # 5 минут
 
+    # Rate Limiting
+    RATE_LIMIT_REQUESTS: int = 100  # макс. запросов
+    RATE_LIMIT_WINDOW_SECONDS: int = 60  # за период (секунды)
+
     # ARQ (cron jobs)
     ARQ_REDIS_DB: int = 2  # отдельная БД Redis для task-service worker
     AUTO_ESCALATE_TODO_AFTER_DAYS: int = 3

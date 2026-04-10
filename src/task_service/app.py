@@ -2,10 +2,13 @@ from contextlib import asynccontextmanager
 
 from dishka.integrations.fastapi import setup_dishka
 from fastapi import FastAPI
+from redis.asyncio import Redis
 from starlette.middleware.cors import CORSMiddleware
 
 from task_service.api.health_check.health_check_router import health_check_router
 from task_service.api.metrics import metrics_router
+from task_service.api.middleware.rate_limit import RateLimitMiddleware
+from task_service.api.rate_limit import rate_limit_router
 from task_service.api.tasks import tasks_router
 from task_service.api.comments import comments_router
 from task_service.core.config import settings
@@ -44,9 +47,21 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    # Rate Limiting middleware
+    redis = Redis(
+        host=settings.REDIS_HOST,
+        port=settings.REDIS_PORT,
+        db=settings.REDIS_DB,
+        username=settings.REDIS_USERNAME,
+        password=settings.REDIS_PASSWORD,
+        decode_responses=True,
+    )
+    app.add_middleware(RateLimitMiddleware, redis=redis)
+
     # Роутеры
     app.include_router(tasks_router, prefix="/api/v1", tags=["Tasks"])
     app.include_router(comments_router, prefix="/api/v1", tags=["Comments"])
+    app.include_router(rate_limit_router, prefix="/api/v1", tags=["Rate Limit"])
     app.include_router(health_check_router)
     app.include_router(metrics_router)
 
