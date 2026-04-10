@@ -70,6 +70,7 @@ class TaskSchema(BaseTask):
     created_by: str
     created_at: datetime
     updated_at: datetime
+    search_headline: Optional[str] = None
 
 
 # ======== Межслойные DTO (Filters) ========

@@ -13,8 +13,8 @@ class TasksRequest(PaginationAwareRequest):
 
     search: Optional[str] = Field(
         None,
-        description="Часть названия для поиска (регистронезависимо)",
-        example="bug",
+        description="Полнотекстовый поиск по названию и описанию (поддержка морфологии)",
+        example="задача",
     )
     status: Optional[TaskStatus] = None
     priority: Optional[TaskPriority] = None
@@ -68,6 +68,7 @@ class TaskResponse(BaseModel):
     created_by: str
     created_at: datetime
     updated_at: datetime
+    search_headline: Optional[str] = None
 
     class Config:
         from_attributes = True

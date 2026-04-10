@@ -2,7 +2,7 @@ from datetime import datetime
 from datetime import timedelta
 from typing import Type
 
-from sqlalchemy import and_, delete, func, insert, select, update
+from sqlalchemy import and_, delete, func, insert, literal_column, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from task_service.core.exceptions.tasks import TaskNotFoundException
@@ -38,21 +38,59 @@ class TaskRepository:
     ) -> tuple[list[TaskSchema], int]:
         query_filters = self._build_filters(filters)
 
-        query = (
-            select(self._tasks_collection)
-            .where(and_(*query_filters))
-            .limit(filters.limit)
-            .offset(filters.offset)
-            .order_by(self._tasks_collection.created_at.desc())
-        )
+        if filters.search:
+            # Полнотекстовый поиск с ts_rank и ts_headline
+            tsvector = func.to_tsvector(
+                literal_column("'russian'"),
+                func.coalesce(self._tasks_collection.title, '') + ' ' +
+                func.coalesce(self._tasks_collection.description, ''),
+            )
+            tsquery = func.plainto_tsquery(literal_column("'russian'"), filters.search)
+            rank = func.ts_rank(tsvector, tsquery).label("rank")
+            headline = func.ts_headline(
+                literal_column("'russian'"),
+                func.coalesce(self._tasks_collection.title, '') + ' ' +
+                func.coalesce(self._tasks_collection.description, ''),
+                tsquery,
+                literal_column("'StartSel=<b>, StopSel=</b>, MaxFragments=3, MaxWords=30'"),
+            ).label("search_headline")
 
-        db_rows = await session.scalars(query)
+            query = (
+                select(self._tasks_collection, rank, headline)
+                .where(and_(*query_filters))
+                .order_by(rank.desc())
+                .limit(filters.limit)
+                .offset(filters.offset)
+            )
 
-        count_query = select(func.count(self._tasks_collection.id.distinct())).where(and_(*query_filters))
-        total = await session.scalar(count_query)
+            result = await session.execute(query)
+            rows = result.all()
 
-        #list comprehension
-        return [self._to_schema(obj) for obj in db_rows.all()], total or 0
+            tasks = []
+            for row in rows:
+                schema = self._to_schema(row[0])
+                schema.search_headline = row[2]  # headline text
+                tasks.append(schema)
+
+            count_query = select(func.count(self._tasks_collection.id.distinct())).where(and_(*query_filters))
+            total = await session.scalar(count_query)
+            return tasks, total or 0
+        else:
+            # Стандартный запрос без поиска
+            query = (
+                select(self._tasks_collection)
+                .where(and_(*query_filters))
+                .limit(filters.limit)
+                .offset(filters.offset)
+                .order_by(self._tasks_collection.created_at.desc())
+            )
+
+            db_rows = await session.scalars(query)
+
+            count_query = select(func.count(self._tasks_collection.id.distinct())).where(and_(*query_filters))
+            total = await session.scalar(count_query)
+
+            return [self._to_schema(obj) for obj in db_rows.all()], total or 0
 
     @log(logger)
     async def create_task(
@@ -193,9 +231,14 @@ class TaskRepository:
         filters_list = []
 
         if filters.search:
-            search_pattern = f"%{filters.search}%"
-            # Search only in title (case-insensitive) for substring match
-            filters_list.append(self._tasks_collection.title.ilike(search_pattern))
+            # Полнотекстовый поиск через tsvector @@ tsquery
+            tsvector = func.to_tsvector(
+                literal_column("'russian'"),
+                func.coalesce(self._tasks_collection.title, '') + ' ' +
+                func.coalesce(self._tasks_collection.description, ''),
+            )
+            tsquery = func.plainto_tsquery(literal_column("'russian'"), filters.search)
+            filters_list.append(tsvector.op('@@')(tsquery))
 
         if filters.status:
             filters_list.append(self._tasks_collection.status == filters.status)
