@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 
 from fastapi import Query
 from pydantic import BaseModel, Field
@@ -37,7 +37,8 @@ class CreateTaskRequestPayload(BaseModel):
     description: Optional[str] = Field(None, max_length=2000, description="Описание задачи")
     status: TaskStatus = Field(default=TaskStatus.TODO, description="Статус задачи")
     priority: TaskPriority = Field(default=TaskPriority.MEDIUM, description="Приоритет задачи")
-    assignee: Optional[str] = Field(None, max_length=100, description="Исполнитель")
+    assignee: Optional[str] = Field(None, max_length=100, description="Исполнитель (обратная совместимость)")
+    assignees: List[str] = Field(default_factory=list, description="Список исполнителей")
     due_date: Optional[datetime] = Field(None, description="Срок выполнения")
 
 
@@ -48,7 +49,8 @@ class UpdateTaskRequestPayload(BaseModel):
     description: Optional[str] = Field(None, max_length=2000)
     status: Optional[TaskStatus] = None
     priority: Optional[TaskPriority] = None
-    assignee: Optional[str] = Field(None, max_length=100)
+    assignee: Optional[str] = Field(None, max_length=100, description="Исполнитель (обратная совместимость)")
+    assignees: Optional[List[str]] = Field(None, description="Список исполнителей")
     due_date: Optional[datetime] = None
 
 
@@ -61,6 +63,7 @@ class TaskResponse(BaseModel):
     status: TaskStatus
     priority: TaskPriority
     assignee: Optional[str]
+    assignees: List[str] = []
     due_date: Optional[datetime]
     created_by: str
     created_at: datetime

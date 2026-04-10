@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from task_service.core.exceptions.tasks import TaskNotFoundException
 from task_service.core.logger import get_logger, log
-from task_service.infrastructure.postgres.models import Task
+from task_service.infrastructure.postgres.models import Task, TaskAssignee
 from task_service.schemas.task import CreateTask, TaskFilters, TaskSchema, TaskStatus, UpdateTask
 
 logger = get_logger(__name__)
@@ -28,7 +28,7 @@ class TaskRepository:
         db_row = await session.scalar(query)
         if not db_row:
             raise TaskNotFoundException(task_id)
-        return TaskSchema.model_validate(db_row)
+        return self._to_schema(db_row)
 
     @log(logger)
     async def get_all_tasks(
@@ -52,7 +52,7 @@ class TaskRepository:
         total = await session.scalar(count_query)
 
         #list comprehension
-        return [TaskSchema.model_validate(obj=obj) for obj in db_rows.all()], total or 0
+        return [self._to_schema(obj) for obj in db_rows.all()], total or 0
 
     @log(logger)
     async def create_task(
@@ -60,11 +60,28 @@ class TaskRepository:
         session: AsyncSession,
         task: CreateTask,
     ) -> TaskSchema:
-        values = task.model_dump()
+        values = task.model_dump(exclude={"assignees"})
+        # Backward compat: assignee = first from assignees if not set
+        if not values.get("assignee") and task.assignees:
+            values["assignee"] = task.assignees[0]
         query = insert(self._tasks_collection).values(values).returning(self._tasks_collection)
         result = await session.scalar(query)
         await session.flush()
-        return TaskSchema.model_validate(result)
+
+        # Create assignees in junction table
+        assignees = task.assignees
+        if not assignees and task.assignee:
+            assignees = [task.assignee]
+        if assignees:
+            await session.execute(
+                insert(TaskAssignee),
+                [{"task_id": result.id, "assignee_email": email} for email in assignees],
+            )
+            await session.flush()
+
+        schema = TaskSchema.model_validate(result)
+        schema.assignees = assignees
+        return schema
 
     @log(logger)
     async def update_task(
@@ -73,8 +90,14 @@ class TaskRepository:
         task_id: int,
         task: UpdateTask,
     ) -> TaskSchema:
+        assignees_to_set = task.assignees
         values = task.model_dump(exclude_unset=True, exclude_none=True)
+        values.pop("assignees", None)
         values["updated_at"] = datetime.utcnow()
+
+        # Backward compat: if assignees provided, set assignee to first
+        if assignees_to_set:
+            values["assignee"] = assignees_to_set[0] if assignees_to_set else None
 
         query = (
             update(self._tasks_collection)
@@ -90,7 +113,26 @@ class TaskRepository:
 
         await session.flush()
 
-        return TaskSchema.model_validate(result)
+        # Update assignees in junction table if provided
+        if assignees_to_set is not None:
+            await session.execute(
+                delete(TaskAssignee).where(TaskAssignee.task_id == task_id)
+            )
+            if assignees_to_set:
+                await session.execute(
+                    insert(TaskAssignee),
+                    [{"task_id": task_id, "assignee_email": email} for email in assignees_to_set],
+                )
+            await session.flush()
+
+        # Read back assignees
+        assignee_query = select(TaskAssignee.assignee_email).where(TaskAssignee.task_id == task_id)
+        assignee_result = await session.scalars(assignee_query)
+        current_assignees = list(assignee_result.all())
+
+        schema = TaskSchema.model_validate(result)
+        schema.assignees = current_assignees
+        return schema
 
     @log(logger)
     async def delete_task(
@@ -136,7 +178,15 @@ class TaskRepository:
         )
 
         db_rows = await session.scalars(query)
-        return [TaskSchema.model_validate(obj=obj) for obj in db_rows.all()]
+        return [self._to_schema(obj) for obj in db_rows.all()]
+
+    @staticmethod
+    def _to_schema(db_row: Task) -> TaskSchema:
+        """Convert Task ORM object to TaskSchema with assignees."""
+        schema = TaskSchema.model_validate(db_row)
+        if hasattr(db_row, "task_assignees") and db_row.task_assignees:
+            schema.assignees = [a.assignee_email for a in db_row.task_assignees]
+        return schema
 
     def _build_filters(self, filters: TaskFilters) -> list:
         """Построить фильтры для запроса."""

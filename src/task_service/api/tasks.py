@@ -150,9 +150,13 @@ async def create_task(
 ) -> TaskResponse:
     """Создать новую задачу."""
     try:
+        data = payload.model_dump()
+        # Backward compat: если передан только assignee, добавляем его в assignees
+        if data.get("assignee") and not data.get("assignees"):
+            data["assignees"] = [data["assignee"]]
         return TaskResponse.model_validate(
             await use_case.execute(
-                task=CreateTask(created_by=current_user.username, **payload.model_dump()),
+                task=CreateTask(created_by=current_user.username, **data),
             )
         )
     except Exception as e:
@@ -174,9 +178,13 @@ async def update_task(
 ) -> TaskResponse:
     """Обновить задачу."""
     try:
+        data = payload.model_dump(exclude_unset=True)
+        # Backward compat: если передан только assignee, добавляем его в assignees
+        if "assignee" in data and "assignees" not in data:
+            data["assignees"] = [data["assignee"]] if data["assignee"] else []
         return TaskResponse.model_validate(
             await use_case.execute(
-                task=UpdateTask.model_validate(payload.model_dump(exclude_unset=True)),
+                task=UpdateTask.model_validate(data),
                 task_id=task_id,
                 updated_by=current_user.username,
             )

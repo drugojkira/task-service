@@ -58,13 +58,14 @@ class CreateTaskUseCase:
         # Инвалидируем кэш статистики
         await self._cache.delete_task_statistics()
 
-        # Отправляем уведомление в RabbitMQ (для нотификаций)
+        # Отправляем уведомление в RabbitMQ (для нотификаций) — всем assignees
         notification = TaskNotificationMessage(
             task_id=created_task.id,
             event_type=TaskEventType.CREATED,
             task_title=created_task.title,
             task_description=created_task.description,
             assignee=created_task.assignee,
+            assignees=created_task.assignees,
             status=created_task.status,
             priority=created_task.priority,
             created_by=created_task.created_by,

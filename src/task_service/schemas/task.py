@@ -1,6 +1,6 @@
 from datetime import datetime
 from enum import Enum
-from typing import Optional
+from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict
 
@@ -44,6 +44,7 @@ class BaseTask(BaseModel):
     status: TaskStatus = TaskStatus.TODO
     priority: TaskPriority = TaskPriority.MEDIUM
     assignee: Optional[str] = None
+    assignees: List[str] = []
     due_date: Optional[datetime] = None
 
 
@@ -59,6 +60,7 @@ class UpdateTask(BaseTask):
     title: Optional[str] = None
     status: Optional[TaskStatus] = None
     priority: Optional[TaskPriority] = None
+    assignees: Optional[List[str]] = None
 
 
 class TaskSchema(BaseTask):
@@ -96,6 +98,7 @@ class TaskNotificationMessage(BaseModel):
     task_title: str
     task_description: Optional[str] = None
     assignee: Optional[str] = None
+    assignees: List[str] = []
     status: TaskStatus
     priority: TaskPriority
     created_by: str

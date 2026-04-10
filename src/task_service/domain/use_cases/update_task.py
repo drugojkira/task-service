@@ -73,16 +73,19 @@ class UpdateTaskUseCase:
         event_type = TaskEventType.UPDATED
         if task.status and old_task.status != task.status:
             event_type = TaskEventType.STATUS_CHANGED
+        elif task.assignees is not None and set(old_task.assignees) != set(updated_task.assignees):
+            event_type = TaskEventType.ASSIGNED
         elif task.assignee and old_task.assignee != task.assignee:
             event_type = TaskEventType.ASSIGNED
 
-        # Отправляем уведомление в RabbitMQ (для нотификаций)
+        # Отправляем уведомление в RabbitMQ (для нотификаций) — всем assignees
         notification = TaskNotificationMessage(
             task_id=updated_task.id,
             event_type=event_type,
             task_title=updated_task.title,
             task_description=updated_task.description,
             assignee=updated_task.assignee,
+            assignees=updated_task.assignees,
             status=updated_task.status,
             priority=updated_task.priority,
             created_by=updated_by,
@@ -108,4 +111,9 @@ class UpdateTaskUseCase:
                 old_serialized = old_val.value if hasattr(old_val, 'value') else str(old_val) if old_val is not None else None
                 new_serialized = new_val.value if hasattr(new_val, 'value') else str(new_val) if new_val is not None else None
                 diff[field] = {"old": old_serialized, "new": new_serialized}
+
+        # Сравниваем assignees (list)
+        if set(old_task.assignees) != set(new_task.assignees):
+            diff["assignees"] = {"old": sorted(old_task.assignees), "new": sorted(new_task.assignees)}
+
         return diff

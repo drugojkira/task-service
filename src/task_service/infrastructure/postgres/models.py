@@ -1,8 +1,10 @@
 from datetime import datetime
 
+from typing import List
+
 from sqlalchemy import DateTime, ForeignKey, String, Text, func
 from sqlalchemy.dialects.postgresql import JSON
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from task_service.infrastructure.postgres.base import Base
 
@@ -25,6 +27,10 @@ class Task(Base):
     )
     assignee: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
     created_by: Mapped[str] = mapped_column(String(100), nullable=False)
+
+    task_assignees: Mapped[List["TaskAssignee"]] = relationship(
+        "TaskAssignee", back_populates="task", cascade="all, delete-orphan", lazy="selectin",
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=False),
         server_default=func.timezone("UTC", func.current_timestamp()),
@@ -50,6 +56,21 @@ class Comment(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=False), server_default=func.timezone("UTC", func.current_timestamp()), onupdate=func.timezone("UTC", func.current_timestamp())
     )
+
+
+class TaskAssignee(Base):
+    __tablename__ = "task_assignees"
+
+    task_id: Mapped[int] = mapped_column(
+        ForeignKey("task_service.tasks.id", ondelete="CASCADE"), primary_key=True,
+    )
+    assignee_email: Mapped[str] = mapped_column(String(255), primary_key=True)
+    assigned_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=False),
+        server_default=func.timezone("UTC", func.current_timestamp()),
+    )
+
+    task: Mapped["Task"] = relationship("Task", back_populates="task_assignees")
 
 
 class TaskHistory(Base):

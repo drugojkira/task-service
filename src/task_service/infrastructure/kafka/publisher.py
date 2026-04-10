@@ -67,6 +67,7 @@ class KafkaPublisher:
                     "updated_at": task.updated_at.isoformat(),
                     "metadata": {
                         "assignee": task.assignee,
+                        "assignees": task.assignees,
                         "priority": task.priority.value if task.priority else None,
                     },
                 },
